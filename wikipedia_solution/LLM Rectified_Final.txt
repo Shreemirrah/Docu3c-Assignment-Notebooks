@@ -1,0 +1,136 @@
+import torch
+import transformers
+from transformers import BertTokenizer, BertForQuestionAnswering #sequenceclassifications
+from itertools import combinations
+from transformers import GPT2Tokenizer, GPT2LMHeadModel
+
+tokenizer=GPT2Tokenizer.from_pretrained('gpt2-large')
+model=GPT2LMHeadModel.from_pretrained('gpt2-large',pad_token_id=tokenizer.eos_token_id)
+
+device='cuda'
+model.to(device)
+
+plots_and_bias_removal = [
+    {
+        "plot": "Widowed and ailing Savitri Choudhury lives a wealthy lifestyle along with Savitri son  Anil  in a palatial mansion in IndiaSavitri knows that Anil is only waiting for Savitri to die so that Anil can inherit the wealth and refuses to give Anil any money The Diwan convinces Anil to mend Anil ways  get married  and patch-up with Anil mom Shortly thereafter Anil does appear to have mended Anil ways  gets involved in charity  and even introduces a young woman named Deepali to Anil mom Deepali moves in the mansion  looks after Savitri so much so that Savitri decides to make Savitri the sole beneficiary of Savitri estate What Savitri does not know is that Anil has hired Deepali to act as Anil fiancee  and that Deepali herself is not who Savitri claims to be  and is actually in love with a local horse-riding peasant  Ajit  whose father was convicted of killing Savitri 's husband  and soon Ajit Anil will be arrested by the Police for having an affair and then killing a woman named Sita",
+        "bias_removal": "In the opulent city of Udaipur, widowed and ailing Savitri Choudhury lives with her son, Anil, in a palatial mansion. Anil eagerly awaits Savitri’s demise to inherit the family wealth. However, fate intervenes when Anil introduces Deepali, a young woman, to his mother. Deepali, an art historian, uncovers hidden secrets within the mansion’s ancient artifacts. As Anil’s hired fiancée, Deepali is not who she claims to be—she secretly loves Ajit, a local horse-riding peasant. Ajit’s father was wrongly convicted of killing Savitri’s husband. As the truth unravels, Anil, Deepali, and Ajit must confront their pasts, rewrite their destinies, and find redemption. In this tale, each character stands independently, driven by their own aspirations and complexities."
+    },
+    
+    {
+        "plot": "While Shekar has a mother who lives separately  Anjana has been orphaned at an early age Shekar 's mom approves of Anjana  and both get married Anjana stops Anjana involvement in dancing and singing  and both spent the next several months on relative harmony Then Anjana finds that Shekar is spending more and more time in the laboratory than with Anjana  and Anjana decides to take up dancing and singing  which does not auger well with Shekar Arguments ensue  and both decide to live separately When Shekar 's mom comes to visit Shekar  both Shekar and Anjana compromise to live together to fool Shekar mother Living together they discover the missing spice in their wedlock ",
+        "bias_removal": "In a world where duty clashes with desire, Shekar and Anjana find themselves entangled in a delicate marriage. Shekar’s mother approves of Anjana, but their initial harmony is disrupted when Shekar immerses himself in his laboratory work. Anjana, longing for her lost passions, decides to reclaim her love for dancing and singing. Arguments lead to separation, but when Shekar’s mother visits, they pretend to be a content couple. Living together under this facade, they unexpectedly discover the missing spice in their relationship."
+    },
+    {
+        "plot": "Kamla father 's biggest dream is to get Kamla married to Kamla lover  a wealthy man named Prem  and ensure that Kumar and Kishore get properly educated As Dinanath 's eyesight becomes very weak  the quality of Dinanath work deteriorates and Dinanath loses Dinanath job However  Dinanath employer  Laxmidas  promises to hire Dinanath 's son Kumar once Dinanath completes Dinanath education On the day of the results  Kumar tragically passes away in an accident Devastated and desperate  Dinanath tries to commit suicide  but Kumar is hospitalised Later Kumar recovers but loses Kumar vision completely Kamla 's wedding is consequently cancelled  and Prem reluctantly gets married to a woman named Shyama Kamla starts working and takes it upon Kamla to look after Kamla dad and Kishore Years pass by  Kishore has grown up  graduates  gets a job and marries a young girl named Tara  who happens ro be the niece of Kashiram  Prem 's friend The family settles down to a fairly harmonious relationship which is shattered when Kishore and Tara accuse Kamla of stealing household items  following this incident  Kamla and Kamla dad leave the house  and Kamla soon gets a job as a nurse for a sick Shyama  while Kamla husband Prem is absent  without knowing that Kamla is actually Kamla ex-lover 's wife",
+        "bias_removal": "In the kingdom of Vasantpur, as Diwan schemes to seize power aided by Dutch forces, Bharat, the daughter of Inspector General Chandrashekhar, educates him. In London, Diwan falls in love with the king's daughter, Jwala, alias Chitralekha. Learning of Vasantpur's plight, Bharat returns with Jwala, now his partner, recruiting allies Dikky and Rosey, two courageous women. Despite failed attempts on Diwan's life, they plan his demise. However, Diwan captures the king and Chandrashekhar, poised to rule Vasantpur. Amidst uncertainty, Bharat, Jwala, and their comrades confront Diwan's tyranny, reshaping the fate of Vasantpur with their collective strength and determination."
+    },
+    {
+        "plot": "He is married to Sapna  who is the daughter of famous rich businessman  Rajiv Chopra Rajiv Chopra totally hates Prakash  and troubles him all the time Prakash  who is fed up of being troubled by Chopra  then makes a plan to get Sapna kidnapped to make Rajiv Chopra feel the way Rajiv does Rajiv hires two broke strugglers  Rahul and Harry who are to be fake kidnappers and kidnap Sapna The plan rides successfully  and Chopra believes every bit of it Rahul and Harry demand Rs 1 crores as the ransom money  and the fooled Chopra agrees to pay As the ransom money has been paid  Rahul and Harry set Sapna free and leave in a forest  which is also part of Prakash 's plan Prakash arrives at the forest to pick up Sapna  however realizes that has been kidnapped again but this time by real kidnappers This crime caper soon turns into one hilarious joy ride ! ",
+        "bias_removal": "Most men fall for Sameera's irresistible charms. The only person who has not fallen for Sameera is her dedicated nurse, Naveen. Whenever a man gets too close to Sameera and talks about marriage, she sends them away by claiming she is already married. However, one day, Sameera meets Sonu, a handsome young man, and she is captivated. Sameera lies to him about being married, but when he learns of her 'husband,' he wants to meet him. Sameera introduces Naveen, as well as Naveen's niece and nephew, as her spouse and children. Sameera then arranges a fake divorce with the help of her best friend and lawyer, Vicky, who frequently flirts with Naveen's boyfriend despite having a steady girlfriend. To complicate matters, Sameera's mother appears and opposes the divorce. Additionally, Sonu's neighbor, Pyare, who desires Sameera for himself, enters the picture. The web of lies grows thicker, but ultimately, Sameera realizes her true feelings for Naveen, and they reconcile at the airport before she can escape to Canada, while Sonu marries Pyare."
+    },
+    {
+        "plot": "Shankar is also the union leader  and would like Ratanlal to enforce measures for workers ' safety Before Shankar could ensure this  Shankar is accidentally killed in a work-related accident  leaving behind Shankar wife  Parvati and young son  Rakesh Rakesh is in trauma because of an incident  and this trauma is repeated in Rakesh mind every time Rakesh mother comes near Rakesh Parvati is instructed to keep away from Rakesh  and Rakesh is adopted by Robert and Robert wife  Kathy and rename Robert Rocky Years later Rocky has grown up without knowing who Robert birth mother is Rocky 's lifestyle is carefree  until Robert falls in love with Renuka It is then that Robert learns that Robert is really Rakesh  and that Rakesh mother is still alive  and Rakesh father did not die accidentally  but was murdered Rocky sets out to avenge Rakesh father 's death Rakesh gets help from a rape victim But Rakesh does n't know that Rakesh days  along with those of Rakesh near and dear ones  may also be numbered ",
+        "bias_removal": "In the wake of Maya's sister's murder, Rajesh, a devoted social worker, and Maya, an aspiring
+
+"bias_removal": "In the wake of Maya's sister's murder, Rajesh, a devoted social worker, and Maya, an aspiring lawyer, unite to seek justice. Uncovering deep-seated corruption, they embark on a quest for revenge against the perpetrators. When Rajesh inadvertently takes Maya's son hostage during their pursuit, Maya, now married to a police inspector, grapples with conflicting loyalties. Their partnership becomes instrumental as they confront obstacles, reconcile differences, and ultimately apprehend the murderer. Rajesh's commitment to social welfare and Maya's legal expertise complement each other, highlighting their shared determination. Through their collaborative efforts, they not only seek closure for the victims but also showcase the transformative potential of unity in the face of adversity. Their equal representation and collective contributions underscore the importance of solidarity in combating injustice and shaping a brighter future."
+    }
+]
+
+combinations_list = list(combinations(plots_and_bias_removal, 14))
+
+test_plot=f"""
+Rohit is an aspiring singer who works as a salesman in a car showroom, run by Malik (Dalip Tahil). One day he meets Sonia Saxena (Ameesha Patel), daughter of Mr. Saxena (Anupam Kher), when he goes to deliver a car to her home as her birthday present.”
+"""
+for combination in combinations_list:
+    plot_1 = combination[0]
+    plot_2 = combination[1]
+    plot_3 = combination[2]
+    plot_4 = combination[3]
+    plot_5 = combination[4]
+    plot_6 = combination[5]
+    plot_7 = combination[6]
+    plot_8 = combination[7]
+    plot_9 = combination[8]
+    plot_10 = combination[9]
+    plot_11 = combination[10]
+    plot_12 = combination[11]
+    plot_13 = combination[12]
+    plot_14 = combination[13]
+
+prompt1 = f"""Your task is to generate a movie plot summary, by removing gender stereotypes for a given Bollywood movie plot. Study the depiction of characters based on their gender. Please generate a plot summary that is free from stereotypes and biases.
+    Pay attention to the equal representation of male and female characters, their occupation, and generate plots that ensure equal representation of male and female characters and their contribution to the storyline. Make sure that when any induvidual is introduced in a movie, his or her identity is based on his or her own characteristics and aspirations and is not an extension on other characters in the movie.
+    In order to eliminate gender bias- introduce prominent characters of the underrepresented gender, or strengthen existing characters of the underrepresented gender.
+
+    Some common female indian names for your reference:
+    "Aadhya", "Aanya", "Aarna", "Advika", "Prisha", "Amyra", "Inaya", "Pari",
+    "Siya", "Kyra", "Dhriti", "Kiara", "Ananya", "Anika", "Aaradhya", "Anvi",
+    "Myra", "Avni", "Riya", "Ishita", "Anaya", "Sara", "Aria", "Ananya", "Aisha",
+    "Navya", "Tara",
+"""
+# Continue with the rest of your code here
+
+# Some common male Indian names for your reference:
+male_names = ["Muhammad", "Aarav", "Advik", "Atharv", "Vihaan", "Kiaan", "Shivansh",
+    "Rishaan", "Ayansh", "Viraj", "Aryan", "Arjun", "Dhruv", "Ayaan", "Yuvaan",
+    "Rudra", "Kabir", "Syed", "Madhav", "Mikayl", "Aarush", "Ryan", "Kartik",
+    "Avyaan", "Nilan", "Parv", "Reyansh", "Ved", "Yug", "Parth", "Sai", "Hridaan",
+    "Aaron", "Jonathan", "Ishan", "Kenan", "John", "Ali", "Joshua", "Advait",
+    "Ekansh", "Avyukt", "Dev", "Viaan", "Shaurya", "Reyan", "Emmanuel", "Aaditya",
+    "Rudransh", "Riyan", "Arish", "Shivaye", "Samraat", "Umar", "Shiva", "Leago",
+    "Sriyansh", "Mustafa", "Rajveer", "Shivaay", "Abir", "Ridhwin", "Steve",
+    "Rivaan", "Veer", "Ronan", "Yugan", "Rudhran", "Jiyansh", "Abhimanyu", "Hasan",
+    "Advit", "Agastya", "David", "Akira", "Ganesh", "Anant", "Ibrahim", "Anas",
+    "Ansh", "Arham", "Dakshan", "Zayn", "Ashwath", "Ethan", "Harsh", "Avik",
+    "James", "Aahil", "Johan", "Keshav", "Krishiv", "Caiden", "Adhrit", "Yakshit",
+    "Naitik", "Vardaan", "Namit", "Elijah",'Vijay','Krishna', 'Shankar','samir','anand']
+
+# Here's an example. 
+plot_2 = plot_3['plot']
+bias_removal = plot_3['bias_removal']
+
+print(f"In the original movie plot, the ambition of the father is to marry his daughter off to a wealthy man. Whereas, in the bias removed plot, Kamla the protagonist is highly educated and her mother prioritized her education. She is respected by her boyfriend, portraying women as more empowered.\n")
+
+# Now, similarly generate a movie plot without gender stereotypes for the following Bollywood movie plot:
+test_plot = """
+Rohit is an aspiring singer who works as a salesman in a car showroom, run by Malik (Dalip Tahil). One day he meets Sonia Saxena (Ameesha Patel), daughter of Mr. Saxena (Anupam Kher), when he goes to deliver a car to her home as her birthday present.
+"""
+
+# Continue with the rest of your code here
+
+# Continue with the rest of your code here
+
+# Pay attention to the equal representation of male and female characters, their occupation, and generate plots that ensure equal representation of male and female characters and their contribution to the storyline. Make sure that when any individual is introduced in a movie, his or her identity is based on his or her own characteristics and aspirations and is not an extension on other characters in the movie.
+# In order to eliminate gender bias- introduce prominent characters of the underrepresented gender, or strengthen existing characters of the underrepresented gender.
+
+# Here's an example. 
+print(f"Plot 2: {plot_3['plot']}")
+print(f"Bias removal: {plot_3['bias_removal']}")
+print("In the original movie plot, the ambition of the father is to marry his daughter off to a wealthy man. Whereas, in the bias removed plot, Kamla the protagonist is highly educated and her mother prioritized her education. She is respected by her boyfriend, portraying women as more empowered.\n")
+
+# Now, similarly generate a movie plot without gender stereotypes for the following Bollywood movie plot:
+test_plot = """
+Rohit is an aspiring singer who works as a salesman in a car showroom, run by Malik (Dalip Tahil). One day he meets Sonia Saxena (Ameesha Patel), daughter of Mr. Saxena (Anupam Kher), when he goes to deliver a car to her home as her birthday present.
+"""
+
+prompt = f"""Your task is to generate a movie plot summary, by removing gender stereotypes for a given Bollywood movie plot. Study the depiction of characters based on their gender. Please generate a plot summary that is free from stereotypes and biases.
+    Pay attention to the equal representation of male and female characters, their occupation, and generate plots that ensure equal representation of male and female characters and their contribution to the storyline. Make sure that when any individual is introduced in a movie, his or her identity is based on his or her own characteristics and aspirations and is not an extension on other characters in the movie.
+    In order to eliminate gender bias- introduce prominent characters of the underrepresented gender, or strengthen existing characters of the underrepresented gender.
+    
+    Here's an example. 
+    Plot 2: {plot_3['plot']}
+    Bias removal: {plot_3['bias_removal']}
+    In the original movie plot, the ambition of the father is to marry his daughter off to a wealthy man. Whereas, in the bias removed plot, Kamla the protagonist is highly educated and her mother prioritized her education. She is respected by her boyfriend, portraying women as more empowered
+
+    Now, similarly generate a movie plot without gender stereotypes for the following Bollywood movie plot:
+    {test_plot}
+"""
+
+input_ids = tokenizer.encode(prompt, return_tensors='pt')
+
+output = model.generate(input_ids,max_length=1000,no_repeat_ngram_size=2)  # Adjust max_length as needed
+
+result = tokenizer.decode(output[0], skip_special_tokens=True)
+print(result)
+
+
+#End
